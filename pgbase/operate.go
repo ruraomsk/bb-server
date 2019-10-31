@@ -7,65 +7,59 @@ import (
 	"io/ioutil"
 	"rura/teprol/logger"
 	"sort"
-
-	_ "github.com/lib/pq"
 )
 
+//ListDataBases Перечень загруженных баз данных
+var ListDataBases []*DataBase
+
+//MapDataBases Управляющие структуры
+var MapDataBases map[string]*CtrlDataBase
+
 //LoadDataBases загрузка описания баз данных
-func LoadDataBases(path string) ([]*DataBase, error) {
+func LoadDataBases(path string) error {
 	var databases []*DataBase
-	var result []*DataBase
+	Uses = make(map[string]*WorkArea)
+	ListDataBases = make([]*DataBase, 0)
+	MapDataBases = make(map[string]*CtrlDataBase)
 	buf, err := ioutil.ReadFile(path)
 	if err != nil {
 		logger.Error.Printf("Error reading file %s! %s", path, err.Error())
-		return result, err
+		return err
 	}
 	err = json.Unmarshal(buf, &databases)
 	if err != nil {
-		return result, err
+		return err
 	}
 	for _, db := range databases {
-		db.LoadDataBase()
-		result = append(result, db)
+		s := db.LoadDataBase()
+		ListDataBases = append(ListDataBases, db)
+		cdb := new(CtrlDataBase)
+		cdb.BaseData = db
+		cdb.StrConnect = s
+		MapDataBases[db.Name] = cdb
 	}
-	return result, nil
-}
-
-//Stoped Оставливалка
-func (db *DataBase) Stoped(stop, ret chan int) {
-	<-stop
-	logger.Info.Printf("Database %s stoped.", db.Name)
-	ret <- 1
-}
-
-//StartWorkers запускает читателей для этой базы данных
-func (db *DataBase) StartWorkers(stop, ret chan int) error {
-	
-	go db.Stoped(stop, ret)
 	return nil
 }
 
 //LoadDataBase Загружает описание одной базы данных
-func (db *DataBase) LoadDataBase() error {
-	db.Mutex.Lock()
-	defer db.Mutex.Unlock()
-	db.StrConnect = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", db.Host, db.Port, db.User, db.Password, db.DBname)
-	con, err := sql.Open("postgres", db.StrConnect)
+func (db *DataBase) LoadDataBase() (StrConnect string) {
+	StrConnect = fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", db.Host, db.Port, db.User, db.Password, db.DBname)
+	con, err := sql.Open("postgres", StrConnect)
 	if err != nil {
-		logger.Error.Printf("Open dataBase %s error %s", db.StrConnect, err.Error())
+		logger.Error.Printf("Open dataBase %s error %s", StrConnect, err.Error())
 		db.Connect = false
-		return err
+		return
 	}
 	if err = con.Ping(); err != nil {
-		logger.Error.Printf("Not ping %s error %s", db.StrConnect, err.Error())
+		logger.Error.Printf("Not ping %s error %s", StrConnect, err.Error())
 		db.Connect = false
-		return err
+		return
 	}
 	db.Connect = true
 	rows, err := con.Query("SELECT table_name FROM information_schema.tables WHERE table_schema NOT IN ('information_schema','pg_catalog');")
 	if err != nil {
 		logger.Error.Printf("Query for name table error %s", err.Error())
-		return err
+		return
 	}
 	defer rows.Close()
 	db.Tables = make([]Table, 0)
@@ -75,13 +69,13 @@ func (db *DataBase) LoadDataBase() error {
 		err = rows.Scan(&table.Name)
 		if err != nil {
 			logger.Error.Printf("Scan for name table error %s", err.Error())
-			return err
+			return
 		}
 		str := "SELECT subq.attname, d.description FROM(SELECT a.attname, c.oid, a.attnum FROM pg_class c, pg_attribute a WHERE c.oid = a.attrelid AND c.relname = '" + table.Name + "'AND a.attnum > 0) subq LEFT OUTER JOIN pg_description d ON(d.objsubid = subq.attnum AND d.objoid = subq.oid);"
 		rnames, err := con.Query(str)
 		if err != nil {
 			logger.Error.Printf("Query for name variables for table %s error %s", table.Name, err.Error())
-			return err
+			return
 		}
 		defer rnames.Close()
 		isTm := false
@@ -116,5 +110,5 @@ func (db *DataBase) LoadDataBase() error {
 			return db.Tables[ii].Variables[i].Name < db.Tables[ii].Variables[j].Name
 		})
 	}
-	return nil
+	return
 }
