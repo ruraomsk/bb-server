@@ -1,0 +1,4 @@
+[   {"name":"RPU","description":"Сервер RPU","host":"192.168.10.30","port":5432,"user":"combo","password":"162747","dbname":"combo"},
+    {"name":"Test","description":"Сервер Empty","host":"192.168.10.30","port":5432,"user":"postgres","password":"162747","dbname":"postgres"},
+    {"name":"Aggregate","description":"Сервер Aggregate","host":"192.168.10.20","port":5432,"user":"postgres","password":"162747","dbname":"cyclebuf"}
+]
