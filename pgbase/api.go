@@ -42,6 +42,7 @@ type Who struct {
 //WorkArea одна рабочая область
 type WorkArea struct {
 	Ready      bool
+	ID         int64
 	RemoteAddr string
 	Query      UserQuery
 	W          http.ResponseWriter
@@ -49,6 +50,7 @@ type WorkArea struct {
 
 //UserResponce стандартный ответ
 type UserResponce struct {
+	ID      int64  `json:"id"`
 	Status  string `json:"status"`
 	Headers []Head `json:"headers,omitempty"`
 	Datas   []Data `json:"datas,omitempty"`
@@ -73,7 +75,7 @@ func SendResponce(w http.ResponseWriter, res []byte) {
 	w.Write(res)
 }
 
-//IsNewQuery проверяет есть для данного запроса запузеный сбор данных
+//IsNewQuery проверяет есть для данного запроса запущеный сбор данных
 func IsNewQuery(w http.ResponseWriter, r *http.Request) (*WorkArea, error) {
 	wa := new(WorkArea)
 	_, ok := Uses[r.RemoteAddr]
@@ -102,6 +104,7 @@ func IsNewQuery(w http.ResponseWriter, r *http.Request) (*WorkArea, error) {
 }
 func (wa *WorkArea) send(status string) {
 	var ur UserResponce
+	ur.ID = wa.ID
 	ur.Status = status
 	r, _ := json.Marshal(&ur)
 	SendResponce(wa.W, r)

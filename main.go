@@ -19,6 +19,7 @@ var err error
 var stop chan int
 var ret chan int
 var timer chan string
+var id int64
 var mutex sync.Mutex
 
 func respAllDataBases(w http.ResponseWriter, r *http.Request) {
@@ -38,10 +39,17 @@ func respGet(w http.ResponseWriter, r *http.Request) {
 	}
 	for _, cdb := range pgbase.MapDataBases {
 		if uwa.Query.DBName == cdb.BaseData.Name {
-			uwa.SendOk()
 			if cdb.BaseData.Connect {
 				//ставим на передачу
 				cdb.InChan <- uwa
+				mutex.Lock()
+				id++
+				if id > 9223372036854775800 {
+					id = 0
+				}
+				uwa.ID = id
+				mutex.Unlock()
+				uwa.SendOk()
 			} else {
 				uwa.SendEnd()
 			}
@@ -54,6 +62,8 @@ func gui() {
 	http.Handle("/", http.FileServer(http.Dir("./frontend")))
 	http.HandleFunc("/all", respAllDataBases)
 	http.HandleFunc("/get", respGet)
+	http.HandleFunc("/getnext", respGetNext)
+
 	logger.Info.Println("Listering on port 8080")
 	fmt.Println("Listering on port 8080")
 	err := http.ListenAndServe(":8080", nil)

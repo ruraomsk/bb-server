@@ -11,9 +11,12 @@ func (cdb *CtrlDataBase) Monitor(stop, ret chan int) {
 
 	select {
 	case <-stop{
-		logger.Info.Printf("Database %s stoped.", cdb.BaseData.Name)
+		logger.Info.Printf("Database stoped %s ", cdb.BaseData.Name)
 		ret <- 1
 	
+	}
+	case <-cdb.StopAll{
+		
 	}
 }
 }
